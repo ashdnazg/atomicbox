@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Safe atomic boxes."><meta name="keywords" content="rust, rustlang, rust-lang, atomicbox"><title>atomicbox - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../ayu.css" disabled ><script id="default-settings"></script><script src="../storage.js"></script><script src="../crates.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="alternate icon" type="image/png" href="../favicon-16x16.png">
+<link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../atomicbox/index.html'><div class='logo-container rust-logo'><img src='../rust-logo.png' alt='logo'></div></a><p class="location">Crate atomicbox</p><div class="block version"><p>Version 0.3.0</p></div><div class="sidebar-elems"><a id="all-types" href="all.html"><p>See all atomicbox's items</p></a><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li></ul></div><p class="location"></p><div id="sidebar-vars" data-name="atomicbox" data-ty="mod" data-relpath="../"></div></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+                <a id="settings-menu" href="../settings.html"><img src="../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="in-band">Crate <a class="mod" href="">atomicbox</a></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../src/atomicbox/lib.rs.html#1-44" title="goto source code">[src]</a></span></h1><div class="docblock"><p>Safe atomic boxes.</p>
+<p>This crate provides <code>AtomicBox&lt;T&gt;</code> and <code>AtomicOptionBox&lt;T&gt;</code> types: safe, owning
+versions of the standard library’s <code>AtomicPtr</code>.</p>
+<p>Unfortunately, the only operations you can perform on an atomic box are
+swaps, stores and compare_exchanges: you can’t just use the box without taking
+ownership of it.
+Imagine a <code>Box</code> without <code>Deref</code> or <code>DerefMut</code> implementations, and you’ll
+get the idea. Still, this is sufficient for some lock-free data structures,
+so here it is!</p>
+<h2 id="why-no-deref" class="section-header"><a href="#why-no-deref">Why no <code>Deref</code>?</a></h2>
+<p>The reason it’s safe for a normal <code>Box</code> to implement <code>Deref</code> is apparent
+from the <code>deref</code> method’s signature:</p>
+
+<div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore">
+<span class="kw">fn</span> <span class="ident">deref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">Target</span>;</pre></div>
+<p>Dereferencing a box returns a reference, call it <code>r</code>, whose lifetime is
+enclosed by the lifetime of <code>&amp;self</code>, the borrow of the box itself. Since the
+box is borrowed by a shared reference, nobody can change the box’s value
+while it exists. This ensures that <code>r</code> remains valid throughout its
+lifetime.</p>
+<p>But the point of an atomic type is that it permits mutation even while
+borrowed by a shared reference. So the fact that you’ve got a shared
+reference to an atomic box doesn’t mean nobody will store some new pointer
+in it and free the old one you’re borrowing.</p>
+<p>This is the same reason you can’t borrow a reference to the contents of any
+other atomic type. The only difference here is that those contents happen to
+be on the heap.</p>
+</div><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2>
+<table><tr class="module-item"><td><a class="struct" href="struct.AtomicBox.html" title="atomicbox::AtomicBox struct">AtomicBox</a></td><td class="docblock-short"><p>A type that holds a single <code>Box&lt;T&gt;</code> value and can be safely shared between
+threads.</p>
+</td></tr><tr class="module-item"><td><a class="struct" href="struct.AtomicOptionBox.html" title="atomicbox::AtomicOptionBox struct">AtomicOptionBox</a></td><td class="docblock-short"><p>A type that holds a single <code>Option&lt;Box&lt;T&gt;&gt;</code> value and can be safely shared
+between threads.</p>
+</td></tr><tr class="module-item"><td><a class="struct" href="struct.Handle.html" title="atomicbox::Handle struct">Handle</a></td><td class="docblock-short"><p>Opaque handle for the atomic box. This allows users to receive handles that
+represent the value of a box, without leaking pointers that are externally
+usable.</p>
+</td></tr></table><h2 id="traits" class="section-header"><a href="#traits">Traits</a></h2>
+<table><tr class="module-item"><td><a class="trait" href="trait.HandleReferable.html" title="atomicbox::HandleReferable trait">HandleReferable</a></td><td class="docblock-short"><p>Trait for values that can be matched against a <code>Handle</code>.</p>
+</td></tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../" data-current-crate="atomicbox" data-search-js="../search-index.js"></div>
+    <script src="../main.js"></script></body></html>

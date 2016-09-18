@@ -1,0 +1,95 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src\lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings"></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg">
+<link rel="alternate icon" type="image/png" href="../../favicon-16x16.png">
+<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../atomicbox/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+                <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1"> 1</span>
+<span id="2"> 2</span>
+<span id="3"> 3</span>
+<span id="4"> 4</span>
+<span id="5"> 5</span>
+<span id="6"> 6</span>
+<span id="7"> 7</span>
+<span id="8"> 8</span>
+<span id="9"> 9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+</pre><div class="example-wrap"><pre class="rust ">
+<span class="doccomment">//! Safe atomic boxes.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This crate provides `AtomicBox&lt;T&gt;` and `AtomicOptionBox&lt;T&gt;` types: safe, owning</span>
+<span class="doccomment">//! versions of the standard library&#39;s `AtomicPtr`.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Unfortunately, the only operations you can perform on an atomic box are</span>
+<span class="doccomment">//! swaps, stores and compare_exchanges: you can&#39;t just use the box without taking</span>
+<span class="doccomment">//! ownership of it.</span>
+<span class="doccomment">//! Imagine a `Box` without `Deref` or `DerefMut` implementations, and you&#39;ll</span>
+<span class="doccomment">//! get the idea. Still, this is sufficient for some lock-free data structures,</span>
+<span class="doccomment">//! so here it is!</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Why no `Deref`?</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! The reason it&#39;s safe for a normal `Box` to implement `Deref` is apparent</span>
+<span class="doccomment">//! from the `deref` method&#39;s signature:</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ```ignore</span>
+<span class="doccomment">//! fn deref(&amp;self) -&gt; &amp;Self::Target;</span>
+<span class="doccomment">//! ```</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Dereferencing a box returns a reference, call it `r`, whose lifetime is</span>
+<span class="doccomment">//! enclosed by the lifetime of `&amp;self`, the borrow of the box itself. Since the</span>
+<span class="doccomment">//! box is borrowed by a shared reference, nobody can change the box&#39;s value</span>
+<span class="doccomment">//! while it exists. This ensures that `r` remains valid throughout its</span>
+<span class="doccomment">//! lifetime.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! But the point of an atomic type is that it permits mutation even while</span>
+<span class="doccomment">//! borrowed by a shared reference. So the fact that you&#39;ve got a shared</span>
+<span class="doccomment">//! reference to an atomic box doesn&#39;t mean nobody will store some new pointer</span>
+<span class="doccomment">//! in it and free the old one you&#39;re borrowing.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This is the same reason you can&#39;t borrow a reference to the contents of any</span>
+<span class="doccomment">//! other atomic type. The only difference here is that those contents happen to</span>
+<span class="doccomment">//! be on the heap.</span>
+
+<span class="kw">mod</span> <span class="ident">atomic_box</span>;
+<span class="kw">mod</span> <span class="ident">atomic_box_base</span>;
+<span class="kw">mod</span> <span class="ident">atomic_option_box</span>;
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">atomic_box</span>::<span class="ident">AtomicBox</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">atomic_box_base</span>::<span class="ident">Handle</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">atomic_box_base</span>::<span class="ident">HandleReferable</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">atomic_option_box</span>::<span class="ident">AtomicOptionBox</span>;
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="atomicbox" data-search-js="../../search-index.js"></div>
+    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
