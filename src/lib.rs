@@ -38,5 +38,5 @@ mod atomic_box_base;
 mod atomic_option_box;
 
 pub use atomic_box::AtomicBox;
-pub use atomic_option_box::AtomicOptionBox;
 pub use atomic_box_base::Handle;
+pub use atomic_option_box::AtomicOptionBox;
