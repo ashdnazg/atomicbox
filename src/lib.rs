@@ -4,7 +4,8 @@
 //! versions of the standard library's `AtomicPtr`.
 //!
 //! Unfortunately, the only operations you can perform on an atomic box are
-//! swaps and stores: you can't just use the box without taking ownership of it.
+//! swaps, stores and compare_exchanges: you can't just use the box without taking
+//! ownership of it.
 //! Imagine a `Box` without `Deref` or `DerefMut` implementations, and you'll
 //! get the idea. Still, this is sufficient for some lock-free data structures,
 //! so here it is!
@@ -34,7 +35,10 @@
 //! be on the heap.
 
 mod atomic_box;
+mod atomic_box_base;
 mod atomic_option_box;
 
 pub use atomic_box::AtomicBox;
+pub use atomic_box_base::Handle;
+pub use atomic_box_base::HandleReferable;
 pub use atomic_option_box::AtomicOptionBox;
