@@ -1,5 +1,5 @@
 use std::mem::forget;
-use std::ptr;
+use std::ptr::{self, null_mut};
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 pub(crate) trait PointerConvertible {
@@ -193,6 +193,86 @@ impl<B: PointerConvertible> Drop for AtomicBoxBase<B> {
         let ptr = self.ptr.load(Ordering::Acquire);
         unsafe {
             B::from_raw(ptr);
+        }
+    }
+}
+
+struct Drawer<B: PointerConvertible> {
+    b: Box<B::Target>,
+    ptr: *mut AtomicBoxBase<B>,
+    handle: Handle<B::Target>,
+}
+
+impl<B: PointerConvertible> Drawer<B> {
+    fn new<F>(mut b: Box<B::Target>, get_ptr: F, handle: Handle<B::Target>) -> Drawer<B>
+    where
+        F: Fn(&mut Box<B::Target>) -> &mut AtomicBoxBase<B>,
+    {
+        let ptr_ref = get_ptr(&mut b);
+        ptr_ref
+            .ptr
+            .store(handle.ptr as *mut B::Target, Ordering::Relaxed);
+        let ptr = ptr_ref as *mut AtomicBoxBase<B>;
+        Drawer {
+            b: b,
+            ptr: ptr,
+            handle: handle,
+        }
+    }
+
+    fn insert(
+        mut self,
+        after: &AtomicBoxBase<B>,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<(), Drawer<B>> {
+        let new_ptr = Box::into_raw(unsafe { ptr::read(&mut self.b) });
+        match after.compare_exchange(
+            self.handle,
+            unsafe { B::from_raw(new_ptr) },
+            success,
+            failure,
+        ) {
+            Ok(_) => {
+                forget(self);
+                Ok(())
+            }
+            Err((previous_handle, b)) => {
+                forget(b);
+                self.handle = previous_handle;
+                Err(self)
+            }
+        }
+    }
+}
+
+impl<B: PointerConvertible> Drop for Drawer<B> {
+    /// Dropping a `Drawer<B>` clears ptr so the pointed value isn't dropped.
+    fn drop(&mut self) {
+        let atom = unsafe { &*self.ptr };
+        atom.ptr.store(null_mut(), Ordering::Relaxed);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_drawer() {
+        struct Node(AtomicBoxBase<Option<Box<Node>>>);
+
+        let head = AtomicBoxBase::new(None);
+        let mut new_box = Box::new(Node(AtomicBoxBase::new(None)));
+        let current_handle = head.load_handle(Ordering::Relaxed);
+
+        let mut drawer = Drawer::new(new_box, |b: &mut Box<Node>| &mut b.0, current_handle);
+
+        loop {
+            drawer = match drawer.insert(&head, Ordering::SeqCst, Ordering::Relaxed) {
+                Ok(_) => break,
+                Err(d) => d,
+            }
         }
     }
 }
